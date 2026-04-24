@@ -13,6 +13,7 @@ import { CommandManager } from "./commands";
 
 let commandManager: CommandManager | undefined;
 let statusBar: StatusBarManager | undefined;
+let gitService: GitService | undefined;
 
 export async function activate(
   context: vscode.ExtensionContext
@@ -21,7 +22,7 @@ export async function activate(
 
   // Initialize services
   const coAuthorManager = new CoAuthorManager();
-  const gitService = new GitService();
+  gitService = new GitService();
   statusBar = new StatusBarManager();
 
   // Initialize Git API
@@ -60,11 +61,22 @@ export async function activate(
     },
   });
 
+  // If the extension was previously enabled, set the commit template on startup
+  const state = commandManager.getState();
+  if (state.enabled && state.selectedTool) {
+    const trailer = coAuthorManager.formatTrailer(state.selectedTool);
+    gitService.setCommitTemplate(trailer);
+  }
+
   console.log("AIComTrace: Extension activated successfully");
 }
 
 export function deactivate(): void {
-  console.log("AIComTrace: Extension deactivated");
+  console.log("AIComTrace: Extension deactivating...");
+
+  // Clean up commit templates from all repositories
+  gitService?.clearAllCommitTemplates();
+
   commandManager?.dispose();
   statusBar?.dispose();
 }

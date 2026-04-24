@@ -6,7 +6,13 @@
  */
 
 import * as vscode from "vscode";
+import * as fs from "fs";
+import * as path from "path";
+import * as cp from "child_process";
 import { GitExtensionAPI, GitAPI, Repository } from "./types";
+
+/** Name of the template file stored inside .git */
+const TEMPLATE_FILENAME = ".aicomtrace-commit-template";
 
 export class GitService {
   private gitApi: GitAPI | null = null;
@@ -130,6 +136,138 @@ export class GitService {
     }
 
     await repo.commit(message);
+  }
+
+  /**
+   * Sets the git commit.template for the active repository.
+   * Creates a template file inside .git/ and sets the local git config.
+   * The template contains a blank line followed by the Co-authored-by trailer,
+   * so it automatically appears in the editor when committing from the CLI.
+   */
+  setCommitTemplate(trailer: string): void {
+    const repo = this.getActiveRepository();
+    if (!repo) {
+      console.warn("AIComTrace: No repository found – cannot set commit template");
+      return;
+    }
+
+    const repoRoot = repo.rootUri.fsPath;
+    const gitDir = path.join(repoRoot, ".git");
+
+    // .git could be a file (worktree) – only handle the directory case
+    if (!fs.existsSync(gitDir) || !fs.statSync(gitDir).isDirectory()) {
+      console.warn("AIComTrace: .git directory not found – cannot set commit template");
+      return;
+    }
+
+    const templatePath = path.join(gitDir, TEMPLATE_FILENAME);
+
+    try {
+      // Write the template: blank line + trailer (git uses this as default message)
+      fs.writeFileSync(templatePath, `\n\n${trailer}\n`, "utf-8");
+
+      // Set local git config to point to the template
+      cp.execSync(
+        `git config --local commit.template "${templatePath}"`,
+        { cwd: repoRoot, stdio: "pipe" }
+      );
+
+      console.log(`AIComTrace: Set commit.template → ${templatePath}`);
+    } catch (error) {
+      console.error("AIComTrace: Failed to set commit.template:", error);
+    }
+  }
+
+  /**
+   * Clears the git commit.template previously set by AIComTrace.
+   * Removes the template file and unsets the local git config.
+   */
+  clearCommitTemplate(): void {
+    const repo = this.getActiveRepository();
+    if (!repo) {
+      return;
+    }
+
+    const repoRoot = repo.rootUri.fsPath;
+    const gitDir = path.join(repoRoot, ".git");
+
+    if (!fs.existsSync(gitDir) || !fs.statSync(gitDir).isDirectory()) {
+      return;
+    }
+
+    const templatePath = path.join(gitDir, TEMPLATE_FILENAME);
+
+    try {
+      // Only unset if we're the ones who set it
+      const currentTemplate = cp.execSync(
+        "git config --local --get commit.template",
+        { cwd: repoRoot, stdio: "pipe" }
+      ).toString().trim();
+
+      if (currentTemplate === templatePath) {
+        cp.execSync(
+          "git config --local --unset commit.template",
+          { cwd: repoRoot, stdio: "pipe" }
+        );
+      }
+    } catch {
+      // config key doesn't exist – that's fine
+    }
+
+    try {
+      if (fs.existsSync(templatePath)) {
+        fs.unlinkSync(templatePath);
+      }
+    } catch (error) {
+      console.error("AIComTrace: Failed to remove template file:", error);
+    }
+
+    console.log("AIComTrace: Cleared commit.template");
+  }
+
+  /**
+   * Clears commit templates for ALL known repositories.
+   * Used during extension deactivation to clean up.
+   */
+  clearAllCommitTemplates(): void {
+    if (!this.gitApi) {
+      return;
+    }
+
+    for (const repo of this.gitApi.repositories) {
+      const repoRoot = repo.rootUri.fsPath;
+      const gitDir = path.join(repoRoot, ".git");
+
+      if (!fs.existsSync(gitDir) || !fs.statSync(gitDir).isDirectory()) {
+        continue;
+      }
+
+      const templatePath = path.join(gitDir, TEMPLATE_FILENAME);
+
+      try {
+        const currentTemplate = cp.execSync(
+          "git config --local --get commit.template",
+          { cwd: repoRoot, stdio: "pipe" }
+        ).toString().trim();
+
+        if (currentTemplate === templatePath) {
+          cp.execSync(
+            "git config --local --unset commit.template",
+            { cwd: repoRoot, stdio: "pipe" }
+          );
+        }
+      } catch {
+        // config key doesn't exist
+      }
+
+      try {
+        if (fs.existsSync(templatePath)) {
+          fs.unlinkSync(templatePath);
+        }
+      } catch {
+        // ignore cleanup errors
+      }
+    }
   }
 
   /**

@@ -101,6 +101,12 @@ export class CommandManager {
         this.appendTrailerToInputBox();
       }
 
+      // Set git commit.template so CLI commits also get the trailer
+      if (this.state.selectedTool) {
+        const trailer = this.coAuthorManager.formatTrailer(this.state.selectedTool);
+        this.gitService.setCommitTemplate(trailer);
+      }
+
       vscode.window.showInformationMessage(
         `AIComTrace: AI Co-Author enabled – ${this.state.selectedTool!.name}`
       );
@@ -110,6 +116,9 @@ export class CommandManager {
 
       // Remove trailer from current input box
       this.removeTrailerFromInputBox();
+
+      // Clear git commit.template
+      this.gitService.clearCommitTemplate();
 
       vscode.window.showInformationMessage(
         "AIComTrace: AI Co-Author disabled"
@@ -162,6 +171,10 @@ export class CommandManager {
         this.appendTrailerToInputBox();
       }
     }
+
+    // Update git commit.template with the new tool
+    const trailer = this.coAuthorManager.formatTrailer(tool);
+    this.gitService.setCommitTemplate(trailer);
 
     vscode.window.showInformationMessage(
       `AIComTrace: Selected ${tool.name} as AI Co-Author`

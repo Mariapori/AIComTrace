@@ -1,0 +1,148 @@
+{
+  "name": "aicomtrace",
+  "displayName": "AIComTrace",
+  "description": "Add Co-authored-by trailers to your git commits when code changes are made with AI assistance",
+  "version": "0.1.0",
+  "publisher": "mariapori",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mariapori/AIComTrace"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "co-authored-by",
+    "ai",
+    "commit",
+    "copilot",
+    "claude",
+    "chatgpt",
+    "gemini",
+    "cursor"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aicomtrace.toggle",
+        "title": "AIComTrace: Toggle AI Co-Author",
+        "icon": "$(hubot)"
+      },
+      {
+        "command": "aicomtrace.selectTool",
+        "title": "AIComTrace: Select AI Tool"
+      },
+      {
+        "command": "aicomtrace.commitWithCoAuthor",
+        "title": "AIComTrace: Commit with AI Co-Author",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "aicomtrace.addCustomTool",
+        "title": "AIComTrace: Add Custom AI Tool"
+      },
+      {
+        "command": "aicomtrace.removeTrailer",
+        "title": "AIComTrace: Remove Co-authored-by Trailer"
+      }
+    ],
+    "configuration": {
+      "title": "AIComTrace",
+      "properties": {
+        "aicomtrace.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable AI Co-authored-by trailer for commits"
+        },
+        "aicomtrace.defaultTool": {
+          "type": "string",
+          "default": "",
+          "description": "Default AI tool to use for Co-authored-by trailer",
+          "enum": [
+            "",
+            "GitHub Copilot",
+            "Claude (Anthropic)",
+            "ChatGPT (OpenAI)",
+            "Google Gemini",
+            "Cursor AI",
+            "Windsurf (Codeium)"
+          ],
+          "enumDescriptions": [
+            "No default – always ask",
+            "GitHub Copilot",
+            "Claude by Anthropic",
+            "ChatGPT by OpenAI",
+            "Google Gemini",
+            "Cursor AI",
+            "Windsurf by Codeium"
+          ]
+        },
+        "aicomtrace.customTools": {
+          "type": "array",
+          "default": [],
+          "description": "Custom AI tools for Co-authored-by trailer",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Display name of the AI tool"
+              },
+              "email": {
+                "type": "string",
+                "description": "Email to use in the Co-authored-by trailer"
+              }
+            },
+            "required": [
+              "name",
+              "email"
+            ]
+          }
+        },
+        "aicomtrace.autoAppend": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically append Co-authored-by trailer to the SCM input box when enabled"
+        }
+      }
+    },
+    "menus": {
+      "scm/title": [
+        {
+          "command": "aicomtrace.commitWithCoAuthor",
+          "group": "navigation",
+          "when": "scmProvider == git && aicomtrace.enabled"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "node esbuild.js --production",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "esbuild": "^0.20.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.0"
+  },
+  "extensionDependencies": [
+    "vscode.git"
+  ]
+}
